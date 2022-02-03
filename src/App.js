@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-
+import React, { useCallback, useEffect, useState } from 'react';
+import AddMovie from './components/AddMovie';
 import MoviesList from './components/MoviesList';
 import './App.css';
 
@@ -9,35 +9,51 @@ function App() {
   const [ feedback, setFeedback ] = useState('No movies yet')
   
   const transformData = (data) => {
-    return data.map(film => {
-      return {
-        id: film.episode_id,
-        title: film.title,
-        openingText: film.opening_crawl,
-        releaseDate: film.release_date,
-      }
-    })
+    return Object.keys(data).map(film => ({
+      id: film,
+      title: data[film].title,
+      openingText: data[film].openingText,
+      releaseDate: data[film].releaseDate,
+    }))
   }
 
-  const fetchMovies = async () => {
+  // useCallback is necesary for avoid reload the component forever
+  const fetchMovies = useCallback(async () => {
     try {
       setisLoading(true)
-      const response = await fetch('https://swapi.dev/api/films')
+      const response = await fetch('https://react-movies-be772-default-rtdb.firebaseio.com/movies.json')
       if (!response.ok) {
         throw new Error('Something went wrong')
       }
       const res = await response.json()
-      setMovies(transformData(res.results))
+      setMovies(transformData(res))
       setFeedback(null)
     } catch (error) {
       setFeedback(error.message)
     } finally {
       setisLoading(false)
     }
-  }
+  }, [])
 
+  useEffect(() => {
+    fetchMovies()
+  }, [fetchMovies]) // this is a good practice
+
+  const addMovieHandler = async (movie) => {
+    const result = await fetch('https://react-movies-be772-default-rtdb.firebaseio.com/movies.json', {
+      method: 'POST',
+      body: JSON.stringify(movie),
+      headers: {
+        'Content-type': 'application/json'
+      }
+    })
+    await result.json()
+  }
   return (
     <React.Fragment>
+      <section>
+        <AddMovie onAddMovie={addMovieHandler} />
+      </section>
       <section>
         <button onClick={fetchMovies}>Fetch Movies</button>
       </section>
